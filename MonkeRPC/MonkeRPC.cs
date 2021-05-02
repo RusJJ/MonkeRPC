@@ -8,7 +8,7 @@ using Utilla;
 namespace MonkeRPC
 {
     /* That's me! */
-    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.0.1")]
+    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.0.2")]
     /* Utilla: OnRoomJoined, used for private lobby detecting */
     [BepInDependency("org.legoandmars.gorillatag.utilla", "1.3.0")]
     /* ComputerInterface: Used for room details */
@@ -16,6 +16,8 @@ namespace MonkeRPC
 
     public class MonkeRPC : BaseUnityPlugin
     {
+        private static int m_nUpdateFramerate = 15;
+
         private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
         private static ConfigEntry<bool> m_hCfgShowRoomCodeEnabled;
         private static ConfigEntry<bool> m_hCfgShowPrivateRoomCodeEnabled;
@@ -63,26 +65,16 @@ namespace MonkeRPC
             Thread.Sleep(3000);
 
             m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.Default);
-            /*hDiscord.SetLogHook(Discord.LogLevel.Debug, (level, message) =>
-            {
-                m_hMe.Logger.LogDebug("DiscordLog[" + level.ToString() + "] " + message);
-            });*/
-
-            //var applicationManager = m_hDiscord.GetApplicationManager();
             var activityManager = m_hDiscord.GetActivityManager();
             activityManager.RegisterSteam(1533390);
-            /*var lobbyManager = m_hDiscord.GetLobbyManager();
-            var imageManager = m_hDiscord.GetImageManager();
-            var userManager = m_hDiscord.GetUserManager();
-            var relationshipManager = m_hDiscord.GetRelationshipManager();
-            var storageManager = m_hDiscord.GetStorageManager();*/
             try
             {
                 while (true)
                 {
-                    Thread.Sleep(1000 / 60);
+                    if(m_nUpdateFramerate < 1) Thread.Sleep(1000 / 30);
+                    else Thread.Sleep(1000 / m_nUpdateFramerate);
+
                     m_hDiscord.RunCallbacks();
-                    //lobbyManager.FlushNetwork();
                     PreDiscordRPC();
                 }
             }
@@ -98,7 +90,7 @@ namespace MonkeRPC
                 m_hMeTagger = GorillaTagger.Instance;
                 if (m_hMeTagger == null) return;
             }
-
+            
             /* Current player state */
             if(ComputerInterface.BaseGameInterface.GetRoomCode() == null)
             {
@@ -176,7 +168,7 @@ namespace MonkeRPC
                 {
                     m_eJoinedMap = ComputerInterface.BaseGameInterface.EGroup.Canyon;
                 }
-                else if (m_hMeTagger.transform.position.y < 9.0f)
+                else if (m_hMeTagger.transform.position.y < 9.0f && m_hMeTagger.transform.position.z < -79.0f)
                 {
                     m_eJoinedMap = ComputerInterface.BaseGameInterface.EGroup.Cave;
                 }
