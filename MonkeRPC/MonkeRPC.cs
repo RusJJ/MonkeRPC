@@ -56,28 +56,31 @@ namespace MonkeRPC
         }
         static void DiscordGo()
         {
+            /* Not enough time for game to initialize */
+            Thread.Sleep(3000);
+
             discord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.Default);
-            discord.SetLogHook(Discord.LogLevel.Debug, (level, message) =>
+            /*discord.SetLogHook(Discord.LogLevel.Debug, (level, message) =>
             {
                 hMyInnerMonster.Logger.LogDebug("DiscordLog[" + level.ToString() + "] " + message);
-            });
+            });*/
 
-            var applicationManager = discord.GetApplicationManager();
+            //var applicationManager = discord.GetApplicationManager();
             var activityManager = discord.GetActivityManager();
             activityManager.RegisterSteam(1533390);
-            var lobbyManager = discord.GetLobbyManager();
+            /*var lobbyManager = discord.GetLobbyManager();
             var imageManager = discord.GetImageManager();
             var userManager = discord.GetUserManager();
             var relationshipManager = discord.GetRelationshipManager();
-            var storageManager = discord.GetStorageManager();
+            var storageManager = discord.GetStorageManager();*/
             try
             {
                 while (true)
                 {
-                    PreDiscordRPC();
-                    discord.RunCallbacks();
-                    lobbyManager.FlushNetwork();
                     Thread.Sleep(1000 / 60);
+                    discord.RunCallbacks();
+                    //lobbyManager.FlushNetwork();
+                    PreDiscordRPC();
                 }
             }
             finally
