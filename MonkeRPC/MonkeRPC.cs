@@ -36,10 +36,10 @@ namespace MonkeRPC
             },
             Instance = true,
         };
-        public static ConfigEntry<bool> cfgEnabled;
-        public static ConfigEntry<bool> showRoomCodeEnabled;
-        public static ConfigEntry<bool> showPrivateRoomCodeEnabled;
-        public static ConfigEntry<bool> smallIconShowsNickname;
+        private static ConfigEntry<bool> cfgEnabled;
+        private static ConfigEntry<bool> showRoomCodeEnabled;
+        private static ConfigEntry<bool> showPrivateRoomCodeEnabled;
+        private static ConfigEntry<bool> smallIconShowsNickname;
 
         static void UpdateActivity()
         {
@@ -140,9 +140,6 @@ namespace MonkeRPC
         {
             hMyInnerMonster = this;
 
-            Thread thread1 = new Thread(DiscordGo);
-            thread1.Start();
-
             Utilla.Events.RoomJoined += RoomJoined;
 
             var hCfgFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
@@ -150,6 +147,9 @@ namespace MonkeRPC
             showRoomCodeEnabled = hCfgFile.Bind("CFG", "IsRoomCodeVisible", true, "Can everyone see a code of the room?");
             showPrivateRoomCodeEnabled = hCfgFile.Bind("CFG", "IsPrivateRoomCodeVisible", true, "Can everyone see a code of the PRIVATE room?");
             smallIconShowsNickname = hCfgFile.Bind("CFG", "SmallIconShowsNickname", true, "Should a small icon in Discord show your nickname?");
+
+            Thread thread1 = new Thread(DiscordGo);
+            thread1.Start();
         }
 
         private void RoomJoined(object sender, Events.RoomJoinedArgs e)
