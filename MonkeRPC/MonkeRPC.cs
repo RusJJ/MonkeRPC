@@ -20,7 +20,7 @@ namespace MonkeRPC
         public static event EventHandler m_evPreDiscordRPC;
         public static event EventHandler m_evPostDiscordRPC;
 
-        private static int m_nUpdateFramerate = 15;
+        private static int m_nUpdateFramerate = 10;
 
         private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
         private static ConfigEntry<bool> m_hCfgShowRoomCodeEnabled;
@@ -52,6 +52,7 @@ namespace MonkeRPC
             },
             Instance = true,
         };
+        private static Discord.Activity m_hOldActivity = m_hActivity;
 
         /* My functions! */
         private static void UpdateActivity()
@@ -71,7 +72,7 @@ namespace MonkeRPC
         {
             /* Not enough time for game to initialize */
             Thread.Sleep(3000);
-
+            
             m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.Default);
             var activityManager = m_hDiscord.GetActivityManager();
             activityManager.RegisterSteam(1533390);
@@ -158,7 +159,11 @@ namespace MonkeRPC
 
             m_evPostDiscordRPC?.Invoke(null, null);
 
-            UpdateActivity();
+            if(!m_hOldActivity.Equals(m_hActivity))
+            {
+                m_hOldActivity = m_hActivity;
+                UpdateActivity();
+            }
         }
         public void Awake()
         {
