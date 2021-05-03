@@ -8,7 +8,7 @@ using Utilla;
 namespace MonkeRPC
 {
     /* That's me! */
-    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.0.2")]
+    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.1.0")]
     /* Utilla: OnRoomJoined, used for private lobby detecting */
     [BepInDependency("org.legoandmars.gorillatag.utilla", "1.3.0")]
     /* ComputerInterface: Used for room details */
@@ -16,14 +16,21 @@ namespace MonkeRPC
 
     public class MonkeRPC : BaseUnityPlugin
     {
+        /* My variables! */
+        public static event EventHandler m_evPreDiscordRPC;
+        public static event EventHandler m_evPostDiscordRPC;
+
         private static int m_nUpdateFramerate = 15;
 
         private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
         private static ConfigEntry<bool> m_hCfgShowRoomCodeEnabled;
         private static ConfigEntry<bool> m_hCfgShowPrivateRoomCodeEnabled;
         private static ConfigEntry<bool> m_hCfgSmallIconShowsNickname;
+        private static ConfigEntry<bool> m_hCfgUpdateTimeOnRoomJoin;
 
         private static string m_sCurrentLobbyMode = "Default Mode";
+        private static string m_sCurrentCustomMapName = null;
+        private static string m_sCurrentCustomMapFile = null;
 
         private static ComputerInterface.BaseGameInterface.EGroup m_eJoinedMap = 0;
         private static bool m_bIsInPrivateLobby = false;
@@ -46,7 +53,8 @@ namespace MonkeRPC
             Instance = true,
         };
 
-        static void UpdateActivity()
+        /* My functions! */
+        private static void UpdateActivity()
         {
             if(m_hCfgIsRPCEnabled.Value == true)
             {
@@ -59,7 +67,7 @@ namespace MonkeRPC
                 });
             }
         }
-        static void DiscordGo()
+        private static void DiscordGo()
         {
             /* Not enough time for game to initialize */
             Thread.Sleep(3000);
@@ -83,16 +91,18 @@ namespace MonkeRPC
                 m_hDiscord.Dispose();
             }
         }
-        public static void PreDiscordRPC()
+        private static void PreDiscordRPC()
         {
             if(m_hMeTagger == null)
             {
                 m_hMeTagger = GorillaTagger.Instance;
                 if (m_hMeTagger == null) return;
             }
-            
+
+            m_evPreDiscordRPC?.Invoke(null, null);
+
             /* Current player state */
-            if(ComputerInterface.BaseGameInterface.GetRoomCode() == null)
+            if (ComputerInterface.BaseGameInterface.GetRoomCode() == null)
             {
                 m_hActivity.State = "Not Joined";
                 m_hActivity.Assets.LargeImage = "lobby";
@@ -114,20 +124,28 @@ namespace MonkeRPC
 
                 m_hActivity.Details = m_sCurrentLobbyMode;
 
-                switch (m_eJoinedMap)
+                if(m_sCurrentCustomMapName == null || m_sCurrentCustomMapFile == null)
                 {
-                    default:
-                        m_hActivity.Assets.LargeImage = "gorillatag_forest";
-                        m_hActivity.Assets.LargeText = "Forest";
-                        break;
-                    case ComputerInterface.BaseGameInterface.EGroup.Cave:
-                        m_hActivity.Assets.LargeImage = "gorillatag_cave";
-                        m_hActivity.Assets.LargeText = "Cave";
-                        break;
-                    case ComputerInterface.BaseGameInterface.EGroup.Canyon:
-                        m_hActivity.Assets.LargeImage = "gorillatag_desert";
-                        m_hActivity.Assets.LargeText = "Canyon";
-                        break;
+                    switch (m_eJoinedMap)
+                    {
+                        default:
+                            m_hActivity.Assets.LargeImage = "gorillatag_forest";
+                            m_hActivity.Assets.LargeText = "Forest";
+                            break;
+                        case ComputerInterface.BaseGameInterface.EGroup.Cave:
+                            m_hActivity.Assets.LargeImage = "gorillatag_cave";
+                            m_hActivity.Assets.LargeText = "Cave";
+                            break;
+                        case ComputerInterface.BaseGameInterface.EGroup.Canyon:
+                            m_hActivity.Assets.LargeImage = "gorillatag_desert";
+                            m_hActivity.Assets.LargeText = "Canyon";
+                            break;
+                    }
+                }
+                else
+                {
+                    m_hActivity.Assets.LargeImage = m_sCurrentCustomMapFile;
+                    m_hActivity.Assets.LargeText = m_sCurrentCustomMapName;
                 }
             }
 
@@ -137,6 +155,8 @@ namespace MonkeRPC
                 m_hActivity.Assets.SmallImage = "gorillatag_forest";
                 m_hActivity.Assets.SmallText = ComputerInterface.BaseGameInterface.GetName();
             }
+
+            m_evPostDiscordRPC?.Invoke(null, null);
 
             UpdateActivity();
         }
@@ -151,11 +171,16 @@ namespace MonkeRPC
             m_hCfgShowRoomCodeEnabled = hCfgFile.Bind("CFG", "IsRoomCodeVisible", true, "Can everyone see a code of the room?");
             m_hCfgShowPrivateRoomCodeEnabled = hCfgFile.Bind("CFG", "IsPrivateRoomCodeVisible", true, "Can everyone see a code of the PRIVATE room?");
             m_hCfgSmallIconShowsNickname = hCfgFile.Bind("CFG", "SmallIconShowsNickname", true, "Should a small icon in Discord show your nickname?");
+            m_hCfgUpdateTimeOnRoomJoin = hCfgFile.Bind("CFG", "UpdateTimeOnRoomJoin", false, "Update time when joining a room?");
 
             Thread hDiscordThread = new Thread(DiscordGo);
             hDiscordThread.Start();
         }
-
+        public static void SetCustomMapForRPC(string mapname = null, string mapfile = null)
+        {
+            m_sCurrentCustomMapName = mapname;
+            m_sCurrentCustomMapFile = mapfile;
+        }
         private void RoomJoined(object sender, Events.RoomJoinedArgs e)
         {
             if (e != null)
@@ -176,6 +201,11 @@ namespace MonkeRPC
                 {
                     m_eJoinedMap = ComputerInterface.BaseGameInterface.EGroup.Forest;
                 }
+            }
+
+            if(m_hCfgUpdateTimeOnRoomJoin.Value == true)
+            {
+                m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
             }
         }
     }
