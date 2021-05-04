@@ -1,5 +1,6 @@
 ﻿using System;
 using BepInEx;
+using VmodMonkeMapLoader.Behaviours;
 
 namespace MonkeRPCMapLoader
 {
@@ -8,17 +9,23 @@ namespace MonkeRPCMapLoader
     /* MonkeRPC: SetCustomMapForRPC */
     [BepInDependency("net.rusjj.gorillatag.monkerpc", "1.1.0")]
     /* MapLoader: Custom map detecting */
-    [BepInDependency("vadix.gorillatag.maploader", "1.0.0")]
+    [BepInDependency("vadix.gorillatag.maploader", "1.1.0")]
 
     public class MonkeRPCMapLoader : BaseUnityPlugin
     {
         public void Start()
         {
-            MonkeRPC.MonkeRPC.m_evPreDiscordRPC += OnPreDiscordRPC;
-        }
-        private static void OnPreDiscordRPC(object sender, EventArgs e)
-        {
-            MonkeRPC.MonkeRPC.SetCustomMapForRPC(VmodMonkeMapLoader.Behaviours.GetMapName(), VmodMonkeMapLoader.Behaviours.GetMapFileName());
+            MapLoader.OnMapChange = (bIsMapLoaded) =>
+            {
+                if (bIsMapLoaded)
+                {
+                    MonkeRPC.MonkeRPC.SetCustomMapForRPC(MapLoader.GetMapName(), MapLoader.GetMapFileName());
+                }
+                else
+                {
+                    MonkeRPC.MonkeRPC.SetCustomMapForRPC(null, null);
+                }
+            };
         }
     }
 }
