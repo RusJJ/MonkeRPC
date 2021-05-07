@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Monke RPC MapLoader</AssemblyName>
+    <AssemblyName>MonkeRPC_MapLoader</AssemblyName>
     <RootNamespace>MonkeRPC</RootNamespace>
     <Authors>RusJJ</Authors>
     <Version>1.1.0</Version>
@@ -13,11 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MonkeRPC\Main Project.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="BepInEx">
       <HintPath>..\Libs\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="Monke RPC">
-      <HintPath>..\MonkeRPC\bin\Release\netstandard2.0\Monke RPC.dll</HintPath>
     </Reference>
     <Reference Include="MonkeMapLoader">
       <HintPath>..\Libs\MonkeMapLoader.dll</HintPath>

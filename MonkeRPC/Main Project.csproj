@@ -2,10 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Monke RPC</AssemblyName>
+    <AssemblyName>MonkeRPC</AssemblyName>
     <RootNamespace>MonkeRPC</RootNamespace>
     <Authors>RusJJ</Authors>
     <Version>1.1.0</Version>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -19,8 +20,11 @@
     <Reference Include="Assembly-CSharp">
       <HintPath>..\Libs\Assembly-CSharp.dll</HintPath>
     </Reference>
-    <Reference Include="ComputerInterface">
-      <HintPath>..\Libs\ComputerInterface.dll</HintPath>
+    <Reference Include="PhotonRealtime">
+      <HintPath>..\Libs\PhotonRealtime.dll</HintPath>
+    </Reference>
+    <Reference Include="PhotonUnityNetworking">
+      <HintPath>..\Libs\PhotonUnityNetworking.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\Libs\UnityEngine.dll</HintPath>

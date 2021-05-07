@@ -6,10 +6,14 @@ Assembly-CSharp.dll
 
 BepInEx.dll
 
-ComputerInterface.dll
+MonkeMapLoader.dll (for Custom Maps detection, requires 1.1.0 and later)
 
-UnityEngine.dll
+PhotonRealtime.dll
+
+PhotonUnityNetworking.dll
 
 UnityEngine.CoreModule.dll
+
+UnityEngine.dll
 
 Utilla.dll
