@@ -19,11 +19,13 @@ You can found a config at this path: `Gorilla Tag/BepInEx/config/MonkeRPC.cfg`
 
 Just open it and you'll see everything you need.
 
-Available codenames:
-{nickname} = Your monke name!
-{mapname} = Lobby/Forest/Cave/Canyon/Custom map's name
-{mode} = Current gamemode in a lobby: Default/Casual/Competitive
-{code} = Room code
-{players} = Players count in a room
-{maxplayers} = Max players possible in a current room (should be 10 but who knows?)
-{roomprivacy} = Public/Private
+### Available codenames
+```sh
+ {nickname} = Your monke name!
+ {mapname} = Lobby/Forest/Cave/Canyon/Custom map's name
+ {mode} = Current gamemode in a lobby: Default/Casual/Competitive
+ {code} = Room code
+ {players} = Players count in a room
+ {maxplayers} = Max players possible in a current room (should be 10 but who knows?)
+ {roomprivacy} = Public/Private
+```
