@@ -22,7 +22,7 @@ Just open it and you'll see everything you need.
 ### Available codenames
 ```sh
  {nickname} = Your monke name!
- {mapname} = Lobby/Forest/Cave/Canyon/Custom map`s name
+ {mapname} = Lobby/Forest/Cave/Canyon/Name of a custom map
  {mode} = Current gamemode in a lobby: Default/Casual/Competitive
  {code} = Room code
  {players} = Players count in a room
