@@ -13,10 +13,17 @@ Open discord_game_sdk.zip and follow that path: discord_game_sdk.zip\lib\x86_64.
 ## Requirements
 Utilla for private room detecting: https://github.com/legoandmars/Utilla/releases/latest
 
-ComputerInterface for other things (room code, player name, current map): https://github.com/ToniMacaroni/ComputerInterface/releases
-
 ## Config
 
 You can found a config at this path: `Gorilla Tag/BepInEx/config/MonkeRPC.cfg`
 
 Just open it and you'll see everything you need.
+
+Available codenames:
+{nickname} = Your monke name!
+{mapname} = Lobby/Forest/Cave/Canyon/Custom map's name
+{mode} = Current gamemode in a lobby: Default/Casual/Competitive
+{code} = Room code
+{players} = Players count in a room
+{maxplayers} = Max players possible in a current room (should be 10 but who knows?)
+{roomprivacy} = Public/Private

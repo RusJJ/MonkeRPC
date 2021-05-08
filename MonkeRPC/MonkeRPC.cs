@@ -30,6 +30,7 @@ namespace MonkeRPC
         /* My CONFIG variables! */
         private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
         private static ConfigEntry<bool> m_hCfgUpdateTimeOnRoomJoin;
+        private static ConfigEntry<bool> m_hCfgShowSmallImage;
 
         private static ConfigEntry<string> m_cfgLargeImageText;
         private static ConfigEntry<string> m_cfgSmallImageText;
@@ -41,7 +42,16 @@ namespace MonkeRPC
         private static ConfigEntry<string> m_cfgDetails_PublicRoom;
 
         /* My OWN variables! */
-        private static Dictionary<string, string> m_hKVDictionary = new Dictionary<string, string>() { };
+        private static Dictionary<string, string> m_hKVDictionary = new Dictionary<string, string>()
+        {
+            { "nickname", "" },
+            { "mapname", "" },
+            { "mode", "Default" },
+            { "code", "" },
+            { "players", "0" },
+            { "maxplayers", "0" },
+            { "roomprivacy", "Private" },
+        };
         static readonly Regex m_hRegex = new Regex(@"\{(\w+)\}", RegexOptions.Compiled);
 
         private static int m_nUpdateRate = 10;
@@ -64,14 +74,14 @@ namespace MonkeRPC
                 m_hActivity.Assets.LargeText = RegexReplace(m_cfgLargeImageText.Value);
                 m_hActivity.Assets.SmallText = RegexReplace(m_cfgSmallImageText.Value);
 
-                if(m_sRoomCode == null) // Lobby
+                if (m_sRoomCode == null) // Lobby
                 {
                     m_hActivity.Details = RegexReplace(m_cfgDetails_Lobby.Value);
                     m_hActivity.State = RegexReplace(m_cfgState_Lobby.Value);
                 }
                 else // Playing
                 {
-                    if(m_bIsInPrivateLobby) // Ugh... Private lobby.
+                    if (m_bIsInPrivateLobby) // Ugh... Private lobby.
                     {
                         m_hActivity.Details = RegexReplace(m_cfgDetails_PrivateRoom.Value);
                         m_hActivity.State = RegexReplace(m_cfgState_PrivateRoom.Value);
@@ -91,18 +101,19 @@ namespace MonkeRPC
         }
         private static void DiscordGo()
         {
-            /* Not enough time for game to initialize */
+            /* Give some time for game to initialize */
             Thread.Sleep(3000);
             
             m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.Default);
             m_hActivityManager = m_hDiscord.GetActivityManager();
             m_hActivityManager.RegisterSteam(1533390);
+            if (m_hCfgShowSmallImage.Value) m_hActivity.Assets.SmallImage = "gorillatag_forest";
             try
             {
                 while (true)
                 {
-                    if(m_nUpdateRate < 1) Thread.Sleep(1000 / 30);
-                    else Thread.Sleep(1000 / m_nUpdateRate);
+                    if (m_nUpdateRate < 1 || m_nUpdateRate > 1000) m_nUpdateRate = 10;
+                    Thread.Sleep(1000 / m_nUpdateRate);
 
                     m_hDiscord.RunCallbacks();
                     OnDiscordRPC();
@@ -115,6 +126,8 @@ namespace MonkeRPC
         }
         private static void OnDiscordRPC()
         {
+            if (!m_hCfgIsRPCEnabled.Value) return;
+
             if (m_hMeTagger == null)
             {
                 m_hMeTagger = GorillaTagger.Instance;
@@ -141,22 +154,21 @@ namespace MonkeRPC
                 }
             }
 
-            if(m_sRoomCode != null && m_nCurrentPlayers != PhotonNetwork.CurrentRoom.PlayerCount)
+            if (m_sRoomCode != null && m_nCurrentPlayers != PhotonNetwork.CurrentRoom.PlayerCount)
             {
                 bIsUpdated = true;
                 m_nCurrentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
                 m_hKVDictionary["players"] = m_nCurrentPlayers.ToString();
             }
 
-            if(PhotonNetwork.LocalPlayer.NickName != m_sNickname)
+            if (PhotonNetwork.LocalPlayer.NickName != m_sNickname)
             {
                 bIsUpdated = true;
                 m_sNickname = PhotonNetwork.LocalPlayer.NickName;
                 m_hKVDictionary["nickname"] = m_sNickname;
-                m_hActivity.Assets.SmallImage = "gorillatag_forest";
             }
 
-            if(bIsUpdated)
+            if (bIsUpdated)
             {
                 UpdateActivity();
             }
@@ -167,6 +179,7 @@ namespace MonkeRPC
             var hCfgFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
             m_hCfgIsRPCEnabled = hCfgFile.Bind("CFG", "IsRPCEnabled", true, "Should Discord RPC be enabled?");
             m_hCfgUpdateTimeOnRoomJoin = hCfgFile.Bind("CFG", "UpdateTimeOnRoomJoin", false, "Update time when joining a room?");
+            m_hCfgShowSmallImage = hCfgFile.Bind("CFG", "ShowSmallImage", true, "Should Discord show a little image in a bottom-right corner?");
 
             m_cfgLargeImageText = hCfgFile.Bind("CustomRPC", "LargeImageText", "{mapname}", "A text when you're hovering a mouse over large image");
             m_cfgSmallImageText = hCfgFile.Bind("CustomRPC", "SmallImageText", "{nickname}", "A text when you're hovering a mouse over small image");
@@ -176,7 +189,7 @@ namespace MonkeRPC
             m_cfgState_PublicRoom = hCfgFile.Bind("CustomRPC", "State_PublicRoom", "{mode} ({players}/{maxplayers})", "A state in RPC when you're in a public room");
 
             m_cfgDetails_Lobby = hCfgFile.Bind("CustomRPC", "Details_Lobby", "Explores a dead tree", "A details in RPC when you're not joined to any room");
-            m_cfgDetails_PrivateRoom = hCfgFile.Bind("CustomRPC", "Details_PrivateRoom", "Playing (Private {code})", "A details in RPC when you're in a private room");
+            m_cfgDetails_PrivateRoom = hCfgFile.Bind("CustomRPC", "Details_PrivateRoom", "Playing (Private Room)", "A details in RPC when you're in a private room");
             m_cfgDetails_PublicRoom = hCfgFile.Bind("CustomRPC", "Details_PublicRoom", "Playing (Room {code})", "A details in RPC when you're in a public room");
 
             Thread hDiscordThread = new Thread(DiscordGo);
@@ -184,10 +197,11 @@ namespace MonkeRPC
         }
         public static void SetCustomMapForRPC(string mapname = null, string mapfile = null)
         {
-            if(mapname != null && mapfile != null)
+            if (mapname != null && mapfile != null)
             {
                 m_bIsOnCustomMap = true;
                 m_sCustomMapName = mapname;
+                // Discord assets cant have anything except letters, digits and underscore (_)
                 m_sCustomMapFile = mapfile.ToLower().Replace('\'', '_').Replace('.', '_').Replace('(', '_').Replace(')', '_');
             }
             else
@@ -201,11 +215,13 @@ namespace MonkeRPC
             if (e != null)
             {
                 m_bIsInPrivateLobby = e.isPrivate;
+                m_hKVDictionary["roomprivacy"] = m_bIsInPrivateLobby ? "Private" : "Public";
+
                 string sMyTemp = UnityEngine.PlayerPrefs.GetString("currentQueue", "DEFAULT");
                 m_hKVDictionary["mode"] = sMyTemp.Substring(0, 1) + sMyTemp.Substring(1).ToLower();
                 if (m_bIsOnCustomMap)
                 {
-                    if(m_sRoomCode != null)
+                    if (m_sRoomCode != null)
                     {
                         m_hKVDictionary["mapname"] = m_sCustomMapName;
                         m_hActivity.Assets.LargeImage = m_sCustomMapFile;
@@ -234,7 +250,7 @@ namespace MonkeRPC
                 m_hKVDictionary["maxplayers"] = m_nMaxPlayers.ToString();
             }
 
-            if(m_hCfgUpdateTimeOnRoomJoin.Value == true)
+            if (m_hCfgUpdateTimeOnRoomJoin.Value == true)
             {
                 m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
             }
@@ -254,6 +270,18 @@ namespace MonkeRPC
         public static string GetRoomCode()
         {
             return PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.Name : null;
+        }
+        public static int GetMaxPlayers()
+        {
+            return m_nMaxPlayers;
+        }
+        public static int GetPlayers()
+        {
+            return m_nCurrentPlayers;
+        }
+        public static bool IsOnACustomMap()
+        {
+            return m_bIsOnCustomMap;
         }
     }
 }
