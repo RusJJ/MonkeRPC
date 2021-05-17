@@ -3,29 +3,24 @@ using System.IO;
 using System.Threading;
 using BepInEx;
 using BepInEx.Configuration;
-using Utilla;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Photon.Pun;
+using BananaHook;
+using BananaHook.Utils;
 
 namespace MonkeRPC
 {
     /* That's me! */
-    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.1.0")]
-    /* Utilla: OnRoomJoined, used for private lobby detecting */
-    [BepInDependency("org.legoandmars.gorillatag.utilla", "1.3.4")]
+    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.2.0")]
+    /* BananaHook: Our little API */
+    [BepInDependency("net.rusjj.gtlib.bananahook", "1.0.0")]
 
     public class MonkeRPC : BaseUnityPlugin
     {
         /* My DISCORD variables! */
         private static Discord.Discord m_hDiscord = null;
         private static Discord.ActivityManager m_hActivityManager = null;
-        private static Discord.Activity m_hActivity = new Discord.Activity
-        {
-            Timestamps = {
-                Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds(),
-            }, Instance = true
-        };
+        private static Discord.Activity m_hActivity = new Discord.Activity { Instance = true };
 
         /* My CONFIG variables! */
         private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
@@ -48,23 +43,18 @@ namespace MonkeRPC
             { "mapname", "" },
             { "mode", "Default" },
             { "code", "" },
-            { "players", "0" },
-            { "maxplayers", "0" },
+            { "players", "-1" },
+            { "maxplayers", "-1" },
             { "roomprivacy", "Private" },
         };
         static readonly Regex m_hRegex = new Regex(@"\{(\w+)\}", RegexOptions.Compiled);
 
         private static int m_nUpdateRate = 10;
-        private static int m_nCurrentPlayers = 0;
-        private static int m_nMaxPlayers = 0;
         private static bool m_bIsOnCustomMap = false;
-        private static string m_sRoomCode = "Just@A $Random&Code";
-        private static string m_sNickname = "Just@A $Random&Name";
+        private static string m_sRoomCode = null;
         private static string m_sCustomMapName = null;
         private static string m_sCustomMapFile = null;
         private static bool m_bIsInPrivateLobby = false;
-
-        private static GorillaTagger m_hMeTagger = null;
 
         /* My functions! */
         private static void UpdateActivity()
@@ -107,6 +97,13 @@ namespace MonkeRPC
             m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.Default);
             m_hActivityManager = m_hDiscord.GetActivityManager();
             m_hActivityManager.RegisterSteam(1533390);
+
+            m_hKVDictionary["code"] = "";
+            m_hActivity.Assets.LargeImage = "lobby";
+            m_hKVDictionary["mapname"] = "Lobby";
+            m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
+            UpdateActivity();
+
             if (m_hCfgShowSmallImage.Value) m_hActivity.Assets.SmallImage = "gorillatag_forest";
             try
             {
@@ -114,9 +111,7 @@ namespace MonkeRPC
                 {
                     if (m_nUpdateRate < 1 || m_nUpdateRate > 1000) m_nUpdateRate = 10;
                     Thread.Sleep(1000 / m_nUpdateRate);
-
                     m_hDiscord.RunCallbacks();
-                    OnDiscordRPC();
                 }
             }
             finally
@@ -124,58 +119,14 @@ namespace MonkeRPC
                 m_hDiscord.Dispose();
             }
         }
-        private static void OnDiscordRPC()
-        {
-            if (!m_hCfgIsRPCEnabled.Value) return;
-
-            if (m_hMeTagger == null)
-            {
-                m_hMeTagger = GorillaTagger.Instance;
-                if (m_hMeTagger == null) return;
-            }
-
-            bool bIsUpdated = false;
-
-            /* Room Code updated! */
-            if (GetRoomCode() != m_sRoomCode)
-            {
-                bIsUpdated = true;
-                m_sRoomCode = GetRoomCode();
-
-                if (m_sRoomCode == null)
-                {
-                    m_hKVDictionary["code"] = "";
-                    m_hActivity.Assets.LargeImage = "lobby";
-                    m_hKVDictionary["mapname"] = "Lobby";
-                }
-                else
-                {
-                    m_hKVDictionary["code"] = m_sRoomCode;
-                }
-            }
-
-            if (m_sRoomCode != null && m_nCurrentPlayers != PhotonNetwork.CurrentRoom.PlayerCount)
-            {
-                bIsUpdated = true;
-                m_nCurrentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
-                m_hKVDictionary["players"] = m_nCurrentPlayers.ToString();
-            }
-
-            if (PhotonNetwork.LocalPlayer.NickName != m_sNickname)
-            {
-                bIsUpdated = true;
-                m_sNickname = PhotonNetwork.LocalPlayer.NickName;
-                m_hKVDictionary["nickname"] = m_sNickname;
-            }
-
-            if (bIsUpdated)
-            {
-                UpdateActivity();
-            }
-        }
         void Awake()
         {
-            Utilla.Events.RoomJoined += RoomJoined;
+            Events.OnRoomJoined += RoomJoined;
+            Events.OnRoomDisconnected += RoomDisconnected;
+            Events.OnLocalNicknameChange += OnMyNicknameChange;
+            Events.OnPlayerConnected += OnPlayerCountChange;
+            Events.OnPlayerDisconnectedPost += OnPlayerCountChange;
+
             var hCfgFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
             m_hCfgIsRPCEnabled = hCfgFile.Bind("CFG", "IsRPCEnabled", true, "Should Discord RPC be enabled?");
             m_hCfgUpdateTimeOnRoomJoin = hCfgFile.Bind("CFG", "UpdateTimeOnRoomJoin", false, "Update time when joining a room?");
@@ -210,11 +161,12 @@ namespace MonkeRPC
             }
             UpdateActivity();
         }
-        private void RoomJoined(object sender, Events.RoomJoinedArgs e)
+        private void RoomJoined(object sender, RoomJoinedArgs e)
         {
             if (e != null)
             {
                 m_bIsInPrivateLobby = e.isPrivate;
+                m_hKVDictionary["code"] = m_sRoomCode = e.roomCode;
                 m_hKVDictionary["roomprivacy"] = m_bIsInPrivateLobby ? "Private" : "Public";
 
                 string sMyTemp = UnityEngine.PlayerPrefs.GetString("currentQueue", "DEFAULT");
@@ -229,32 +181,49 @@ namespace MonkeRPC
                 }
                 else
                 {
-                    if (m_hMeTagger.transform.position.z < -90.0f)
+                    switch(Room.m_eTriggeredMap)
                     {
-                        m_hKVDictionary["mapname"] = "Canyon";
-                        m_hActivity.Assets.LargeImage = "gorillatag_desert"; // Yeah, that's a desert, sorry ;D
-                    }
-                    else if (m_hMeTagger.transform.position.y < 9.0f && m_hMeTagger.transform.position.z < -79.0f)
-                    {
-                        m_hKVDictionary["mapname"] = "Cave";
-                        m_hActivity.Assets.LargeImage = "gorillatag_cave";
-                    }
-                    else
-                    {
-                        m_hKVDictionary["mapname"] = "Forest";
-                        m_hActivity.Assets.LargeImage = "gorillatag_forest";
+                        case eJoinedMap.Cave:
+                            m_hKVDictionary["mapname"] = "Cave";
+                            m_hActivity.Assets.LargeImage = "gorillatag_cave";
+                            break;
+
+                        case eJoinedMap.Canyon:
+                            m_hKVDictionary["mapname"] = "Canyon";
+                            m_hActivity.Assets.LargeImage = "gorillatag_desert"; // Yeah, that's a desert, sorry ;D
+                            break;
+
+                        default:
+                            m_hKVDictionary["mapname"] = "Forest";
+                            m_hActivity.Assets.LargeImage = "gorillatag_forest";
+                            break;
                     }
                 }
-                
-                m_nMaxPlayers = PhotonNetwork.CurrentRoom.MaxPlayers;
-                m_hKVDictionary["maxplayers"] = m_nMaxPlayers.ToString();
+                m_hKVDictionary["players"] = Room.GetPlayers().ToString();
+                m_hKVDictionary["maxplayers"] = Room.GetMaxPlayers().ToString();
             }
-
             if (m_hCfgUpdateTimeOnRoomJoin.Value == true)
             {
                 m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
             }
-
+            UpdateActivity();
+        }
+        private void RoomDisconnected(object sender, EventArgs e)
+        {
+            m_sRoomCode = null;
+            m_hKVDictionary["code"] = "";
+            m_hActivity.Assets.LargeImage = "lobby";
+            m_hKVDictionary["mapname"] = "Lobby";
+            UpdateActivity();
+        }
+        private void OnMyNicknameChange(object sender, PlayerNicknameArgs e)
+        {
+            m_hKVDictionary["nickname"] = e.newNickName;
+            UpdateActivity();
+        }
+        private void OnPlayerCountChange(object sender, EventArgs e)
+        {
+            m_hKVDictionary["players"] = Room.GetPlayers().ToString();
             UpdateActivity();
         }
         public static string RegexReplace(string sText)
@@ -266,18 +235,6 @@ namespace MonkeRPC
         public static void AddKV(string sKey, string sValue)
         {
             m_hKVDictionary[sKey] = sValue;
-        }
-        public static string GetRoomCode()
-        {
-            return PhotonNetwork.InRoom ? PhotonNetwork.CurrentRoom.Name : null;
-        }
-        public static int GetMaxPlayers()
-        {
-            return m_nMaxPlayers;
-        }
-        public static int GetPlayers()
-        {
-            return m_nCurrentPlayers;
         }
         public static bool IsOnACustomMap()
         {

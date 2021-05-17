@@ -11,7 +11,7 @@ Download Discord Game SDK: https://discord.com/developers/docs/game-sdk/sdk-star
 Open discord_game_sdk.zip and follow that path: discord_game_sdk.zip\lib\x86_64. You need to copy discord_game_sdk.dll near the "Gorilla Tag.exe".
 
 ## Requirements
-Utilla for private room detecting: https://github.com/legoandmars/Utilla/releases/latest
+BananaHook: https://github.com/RusJJ/BananaHook/releases/latest
 
 ## Config
 

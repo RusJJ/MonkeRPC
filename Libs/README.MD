@@ -4,6 +4,8 @@
 
 Assembly-CSharp.dll
 
+BananaHook.dll (since 1.2.0)
+
 BepInEx.dll
 
 MonkeMapLoader.dll (for Custom Maps detection, requires 1.1.0 and later)
@@ -15,5 +17,3 @@ PhotonUnityNetworking.dll
 UnityEngine.CoreModule.dll
 
 UnityEngine.dll
-
-Utilla.dll

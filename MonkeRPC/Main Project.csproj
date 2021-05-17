@@ -5,7 +5,7 @@
     <AssemblyName>MonkeRPC</AssemblyName>
     <RootNamespace>MonkeRPC</RootNamespace>
     <Authors>RusJJ</Authors>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <OutputType>Library</OutputType>
   </PropertyGroup>
 
@@ -14,6 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="BananaHook">
+      <HintPath>..\Libs\BananaHook.dll</HintPath>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\Libs\BepInEx.dll</HintPath>
     </Reference>
@@ -31,9 +34,6 @@
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\Libs\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="Utilla">
-      <HintPath>..\Libs\Utilla.dll</HintPath>
     </Reference>
   </ItemGroup>
 
