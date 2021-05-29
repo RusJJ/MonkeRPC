@@ -28,4 +28,7 @@ Just open it and you'll see everything you need.
  {players} = Players count in a room
  {maxplayers} = Max players possible in a current room (should be 10 but who knows?)
  {roomprivacy} = Public/Private
+ {tagged} = Is your gorilla infected/not infected?
+ {taggedme} = A person tagged you
+ {taggedbyme} = A count of players you're tagged!
 ```

@@ -20,25 +20,34 @@ namespace MonkeRPC
     {
         /* My DISCORD variables! */
         private static Discord.Discord m_hDiscord = null;
-        private static Discord.ActivityManager m_hActivityManager = null;
-        private static Discord.Activity m_hActivity = new Discord.Activity { Instance = true };
+        private static ActivityManager m_hActivityManager = null;
+        private static Activity m_hActivity = new Activity { Instance = true };
 
         /* My CONFIG variables! */
-        private static ConfigEntry<bool> m_hCfgIsRPCEnabled;
-        private static ConfigEntry<bool> m_hCfgUpdateTimeOnRoomJoin;
-        private static ConfigEntry<bool> m_hCfgShowSmallImage;
-        private static ConfigEntry<bool> m_hCfgSmallImageShowTagged;
+        private static ConfigEntry<bool>   m_hCfgIsRPCEnabled;
+        private static ConfigEntry<bool>   m_hCfgUpdateTimeOnRoomJoin;
+        private static ConfigEntry<bool>   m_hCfgShowSmallImage;
+        private static ConfigEntry<bool>   m_hCfgSmallImageShowTagged;
         private static ConfigEntry<string> m_hCfgInfectedText;
         private static ConfigEntry<string> m_hCfgNotInfectedText;
+        private static ConfigEntry<string> m_hCfgInfectedImage;
+        private static ConfigEntry<string> m_hCfgNotInfectedImage;
 
         private static ConfigEntry<string> m_cfgLargeImageText;
         private static ConfigEntry<string> m_cfgSmallImageText;
         private static ConfigEntry<string> m_cfgState_Lobby;
         private static ConfigEntry<string> m_cfgState_PrivateRoom;
         private static ConfigEntry<string> m_cfgState_PublicRoom;
+        private static ConfigEntry<string> m_cfgState_TagPrivateRoom;
+        private static ConfigEntry<string> m_cfgState_TagPublicRoom;
         private static ConfigEntry<string> m_cfgDetails_Lobby;
         private static ConfigEntry<string> m_cfgDetails_PrivateRoom;
         private static ConfigEntry<string> m_cfgDetails_PublicRoom;
+        private static ConfigEntry<string> m_cfgDetails_TagPrivateRoom;
+        private static ConfigEntry<string> m_cfgDetails_TagPublicRoom;
+
+        private static ConfigEntry<string> m_cfgTaggedOnJoinText;
+        private static ConfigEntry<string> m_cfgTaggedOnRoundStartText;
 
         /* My OWN variables! */
         private static Dictionary<string, string> m_hKVDictionary = new Dictionary<string, string>()
@@ -52,25 +61,27 @@ namespace MonkeRPC
             { "infected", "-1" },
             { "notinfected", "-1" },
             { "roomprivacy", "Private" },
-            { "tagged", "Not Tagged" },
+            { "tagged", "Surviving" },
+            { "taggedme", "Server" },
+            { "taggedbyme", "0" },
         };
         static readonly Regex m_hRegex = new Regex(@"\{(\w+)\}", RegexOptions.Compiled);
 
-        private static bool m_bIsOnCustomMap = false;
-        private static bool m_bIsTagged = false;
-        private static string m_sRoomCode = null;
+        private static   bool m_bIsOnCustomMap = false;
+        private static   bool m_bIsInfected = false;
         private static string m_sCustomMapName = null;
         private static string m_sCustomMapFile = null;
-        private static bool m_bIsInPrivateLobby = false;
+        private static   bool m_bIsInPrivateLobby = false;
+        private static    int m_nPlayersTaggedByMe = 0;
 
         /* My functions! */
         private static void UpdateActivity()
         {
-            if (m_hCfgIsRPCEnabled.Value == true)
+            if (m_hCfgIsRPCEnabled.Value)
             {
                 m_hActivity.Assets.LargeText = RegexReplace(m_cfgLargeImageText.Value);
                 m_hActivity.Assets.SmallText = RegexReplace(m_cfgSmallImageText.Value);
-                if (m_sRoomCode == null) // Lobby
+                if (Room.m_szRoomCode == null) // Lobby
                 {
                     m_hActivity.Details = RegexReplace(m_cfgDetails_Lobby.Value);
                     m_hActivity.State = RegexReplace(m_cfgState_Lobby.Value);
@@ -79,17 +90,17 @@ namespace MonkeRPC
                 {
                     if (m_bIsInPrivateLobby) // Ugh... Private lobby.
                     {
-                        m_hActivity.Details = RegexReplace(m_cfgDetails_PrivateRoom.Value);
-                        m_hActivity.State = RegexReplace(m_cfgState_PrivateRoom.Value);
+                        m_hActivity.Details = RegexReplace(m_bIsInfected ? m_cfgDetails_TagPrivateRoom.Value : m_cfgDetails_PrivateRoom.Value);
+                        m_hActivity.State = RegexReplace(m_bIsInfected ? m_cfgState_TagPrivateRoom.Value : m_cfgState_PrivateRoom.Value);
                     }
                     else // Public lobby! F-U-N !!!
                     {
-                        m_hActivity.Details = RegexReplace(m_cfgDetails_PublicRoom.Value);
-                        m_hActivity.State = RegexReplace(m_cfgState_PublicRoom.Value);
+                        m_hActivity.Details = RegexReplace(m_bIsInfected ? m_cfgDetails_TagPublicRoom.Value : m_cfgDetails_PublicRoom.Value);
+                        m_hActivity.State = RegexReplace(m_bIsInfected ? m_cfgState_TagPublicRoom.Value : m_cfgState_PublicRoom.Value);
                     }
-                    if(m_hCfgShowSmallImage.Value == true && m_hCfgSmallImageShowTagged.Value == true)
+                    if(m_hCfgShowSmallImage.Value && m_hCfgSmallImageShowTagged.Value)
                     {
-                        m_hActivity.Assets.SmallImage = m_bIsTagged ? "gorillatag_lavaskin" : "gorillatag_forest";
+                        m_hActivity.Assets.SmallImage = m_bIsInfected ? m_hCfgInfectedImage.Value : m_hCfgNotInfectedImage.Value;
                     }
                 }
                 m_hActivityManager.UpdateActivity(m_hActivity, result => {});
@@ -100,7 +111,7 @@ namespace MonkeRPC
             /* Give some time for game to initialize */
             Thread.Sleep(3000);
             
-            m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)Discord.CreateFlags.NoRequireDiscord);
+            m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)CreateFlags.NoRequireDiscord);
             m_hActivityManager = m_hDiscord.GetActivityManager();
             m_hActivityManager.RegisterSteam(1533390);
 
@@ -108,7 +119,7 @@ namespace MonkeRPC
             m_hActivity.Assets.LargeImage = "lobby";
             m_hKVDictionary["mapname"] = "Lobby";
             m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
-            if (m_hCfgShowSmallImage.Value) m_hActivity.Assets.SmallImage = "gorillatag_forest";
+            if (m_hCfgShowSmallImage.Value) m_hActivity.Assets.SmallImage = m_hCfgNotInfectedImage.Value;
             UpdateActivity();
 
             try
@@ -122,7 +133,7 @@ namespace MonkeRPC
                     }
                     catch(ResultException e)
                     {
-                        UnityEngine.Debug.LogError("Discord throws an ResultException: " + e.ToString());
+                        UnityEngine.Debug.LogError("Discord throws a ResultException: " + e.Message);
                     }
                 }
             }
@@ -133,32 +144,42 @@ namespace MonkeRPC
         }
         void Awake()
         {
-            Events.OnRoomJoined += RoomJoined;
-            Events.OnRoomDisconnected += RoomDisconnected;
+            Events.OnRoomJoined += OnRoomJoined;
+            Events.OnRoomDisconnected += OnRoomDisconnected;
             Events.OnLocalNicknameChange += OnMyNicknameChange;
             Events.OnPlayerConnected += OnPlayerCountChange;
             Events.OnPlayerDisconnectedPost += OnPlayerCountChange;
-            Events.OnPlayerTagPlayer += OnTaggedMe;
+            Events.OnPlayerTagPlayer += OnTaggedSomeone;
             Events.OnRoundStart += OnRoundStart;
 
-            var hCfgFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
-            m_hCfgIsRPCEnabled = hCfgFile.Bind("CFG", "IsRPCEnabled", true, "Should Discord RPC be enabled?");
-            m_hCfgUpdateTimeOnRoomJoin = hCfgFile.Bind("CFG", "UpdateTimeOnRoomJoin", false, "Update time when joining a room?");
-            m_hCfgShowSmallImage = hCfgFile.Bind("CFG", "ShowSmallImage", true, "Should Discord show a little image in a bottom-right corner?");
-            m_hCfgSmallImageShowTagged = hCfgFile.Bind("CFG", "SmallImageShowTagged", true, "Should Discord show a little image in a bottom-right corner?");
-            m_hCfgInfectedText = hCfgFile.Bind("CFG", "InfectedText", "Tagged", "A text for {tagged} code when you're infected (tagged)");
-            m_hCfgNotInfectedText = hCfgFile.Bind("CFG", "NotInfectedText", "Not Tagged", "A text for {tagged} code when you're NOT infected (tagged)");
+            var hCfgFile =                  new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
+            m_hCfgIsRPCEnabled =            hCfgFile.Bind("CFG", "IsRPCEnabled", true, "Should Discord RPC be enabled?");
+            m_hCfgUpdateTimeOnRoomJoin =    hCfgFile.Bind("CFG", "UpdateTimeOnRoomJoin", true, "Update time when joining a room?");
+            m_hCfgShowSmallImage =          hCfgFile.Bind("CFG", "ShowSmallImage", true, "Should Discord show a little image in a bottom-right corner?");
+            m_hCfgSmallImageShowTagged =    hCfgFile.Bind("CFG", "SmallImageShowTagged", true, "Should Discord show an other little image if you're tagged?");
+            m_hCfgInfectedText =            hCfgFile.Bind("CFG", "InfectedText", "Hunting", "A text for {tagged} code when you're infected (tagged)");
+            m_hCfgNotInfectedText =         hCfgFile.Bind("CFG", "NotInfectedText", "Surviving", "A text for {tagged} code when you're NOT infected (tagged)");
+            
+            m_hCfgInfectedImage =           hCfgFile.Bind("CustomRPC", "InfectedImage", "gorillatag_lavaskin", "A text for {tagged} code when you're infected (tagged)");
+            m_hCfgNotInfectedImage =        hCfgFile.Bind("CustomRPC", "NotInfectedImage", "gorillatag_gorilla", "A text for {tagged} code when you're NOT infected (tagged)");
 
-            m_cfgLargeImageText = hCfgFile.Bind("CustomRPC", "LargeImageText", "{mapname}", "A text when you're hovering a mouse over large image");
-            m_cfgSmallImageText = hCfgFile.Bind("CustomRPC", "SmallImageText", "{nickname} | {tagged}", "A text when you're hovering a mouse over small image");
+            m_cfgLargeImageText =           hCfgFile.Bind("CustomRPC", "LargeImageText", "{mapname}", "A text when you're hovering a mouse over large image");
+            m_cfgSmallImageText =           hCfgFile.Bind("CustomRPC", "SmallImageText", "{nickname} | {tagged}", "A text when you're hovering a mouse over small image");
 
-            m_cfgState_Lobby = hCfgFile.Bind("CustomRPC", "State_Lobby", "Not joined", "A state in RPC when you're not joined to any room");
-            m_cfgState_PrivateRoom = hCfgFile.Bind("CustomRPC", "State_PrivateRoom", "{mode} ({players}/{maxplayers})", "A state in RPC when you're in a private room");
-            m_cfgState_PublicRoom = hCfgFile.Bind("CustomRPC", "State_PublicRoom", "{mode} ({players}/{maxplayers})", "A state in RPC when you're in a public room");
+            m_cfgState_Lobby =              hCfgFile.Bind("CustomRPC", "State_Lobby", "Not joined", "A state in RPC when you're not joined to any room");
+            m_cfgState_PrivateRoom =        hCfgFile.Bind("CustomRPC", "State_PrivateRoom", "{mode} ({players}/{maxplayers})", "A state in RPC when you're in a private room");
+            m_cfgState_PublicRoom =         hCfgFile.Bind("CustomRPC", "State_PublicRoom", "{mode} ({players}/{maxplayers})", "A state in RPC when you're in a public room");
+            m_cfgState_TagPrivateRoom =     hCfgFile.Bind("CustomRPC", "State_TagPrivateRoom", "{mode} ({players}/{maxplayers}). I tagged {taggedbyme}!", "A state in RPC when you're tagged in a private room");
+            m_cfgState_TagPublicRoom =      hCfgFile.Bind("CustomRPC", "State_TagPublicRoom", "{mode} ({players}/{maxplayers}). I tagged {taggedbyme}!", "A state in RPC when you're tagged in a public room");
 
-            m_cfgDetails_Lobby = hCfgFile.Bind("CustomRPC", "Details_Lobby", "Explores a dead tree", "A details in RPC when you're not joined to any room");
-            m_cfgDetails_PrivateRoom = hCfgFile.Bind("CustomRPC", "Details_PrivateRoom", "Playing (Private Room)", "A details in RPC when you're in a private room");
-            m_cfgDetails_PublicRoom = hCfgFile.Bind("CustomRPC", "Details_PublicRoom", "Playing (Room {code})", "A details in RPC when you're in a public room");
+            m_cfgDetails_Lobby =            hCfgFile.Bind("CustomRPC", "Details_Lobby", "Explores a dead tree", "A details in RPC when you're not joined to any room");
+            m_cfgDetails_PrivateRoom =      hCfgFile.Bind("CustomRPC", "Details_PrivateRoom", "Playing (Room)", "A details in RPC when you're in a private room");
+            m_cfgDetails_PublicRoom =       hCfgFile.Bind("CustomRPC", "Details_PublicRoom", "Playing ({code})", "A details in RPC when you're in a public room");
+            m_cfgDetails_TagPrivateRoom =   hCfgFile.Bind("CustomRPC", "Details_TagPrivateRoom", "Tagged by {taggedme} (Room)", "A details in RPC when you're tagged in a private room");
+            m_cfgDetails_TagPublicRoom =    hCfgFile.Bind("CustomRPC", "Details_TagPublicRoom", "Tagged by {taggedme} ({code})", "A details in RPC when you're tagged in a public room");
+
+            m_cfgTaggedOnJoinText =         hCfgFile.Bind("CustomRPC", "TaggedOnJoinText", "server on join", "A details in RPC when you're tagged");
+            m_cfgTaggedOnRoundStartText =   hCfgFile.Bind("CustomRPC", "TaggedOnRoundStartText", "server on start", "A details in RPC when you're tagged");
 
             Thread hDiscordThread = new Thread(DiscordGo);
             hDiscordThread.Start();
@@ -178,61 +199,61 @@ namespace MonkeRPC
             }
             UpdateActivity();
         }
-        private void RoomJoined(object sender, RoomJoinedArgs e)
+        private void OnRoomJoined(object sender, RoomJoinedArgs e)
         {
-            if (e != null)
+            m_bIsInPrivateLobby = e.isPrivate;
+            m_hKVDictionary["code"] = e.roomCode;
+            m_hKVDictionary["roomprivacy"] = m_bIsInPrivateLobby ? "Private" : "Public";
+            m_hKVDictionary["mode"] = Room.m_eCurrentLobbyMode.ToString();
+            if (m_bIsOnCustomMap)
             {
-                m_bIsInPrivateLobby = e.isPrivate;
-                m_hKVDictionary["code"] = m_sRoomCode = e.roomCode;
-                m_hKVDictionary["roomprivacy"] = m_bIsInPrivateLobby ? "Private" : "Public";
-
-                string sMyTemp = UnityEngine.PlayerPrefs.GetString("currentQueue", "DEFAULT");
-                m_hKVDictionary["mode"] = sMyTemp.Substring(0, 1) + sMyTemp.Substring(1).ToLower();
-                if (m_bIsOnCustomMap)
+                if (e.roomCode != null)
                 {
-                    if (m_sRoomCode != null)
-                    {
-                        m_hKVDictionary["mapname"] = m_sCustomMapName;
-                        m_hActivity.Assets.LargeImage = m_sCustomMapFile;
-                    }
+                    m_hKVDictionary["mapname"] = m_sCustomMapName;
+                    m_hActivity.Assets.LargeImage = m_sCustomMapFile;
                 }
-                else
-                {
-                    switch(Room.m_eTriggeredMap)
-                    {
-                        case eJoinedMap.Cave:
-                            m_hKVDictionary["mapname"] = "Cave";
-                            m_hActivity.Assets.LargeImage = "gorillatag_cave";
-                            break;
-
-                        case eJoinedMap.Canyon:
-                            m_hKVDictionary["mapname"] = "Canyon";
-                            m_hActivity.Assets.LargeImage = "gorillatag_desert"; // Yeah, that's a desert, sorry ;D
-                            break;
-
-                        default:
-                            m_hKVDictionary["mapname"] = "Forest";
-                            m_hActivity.Assets.LargeImage = "gorillatag_forest";
-                            break;
-                    }
-                }
-                m_hKVDictionary["players"] = Room.GetPlayers().ToString();
-                m_hKVDictionary["maxplayers"] = Room.GetMaxPlayers().ToString();
-                m_hKVDictionary["tagged"] = m_hCfgInfectedText.Value;
-                m_bIsTagged = true;
             }
+            else
+            {
+                switch(Room.m_eTriggeredMap)
+                {
+                    case eJoinedMap.Cave:
+                        m_hKVDictionary["mapname"] = "Cave";
+                        m_hActivity.Assets.LargeImage = "gorillatag_cave";
+                        break;
+            
+                    case eJoinedMap.Canyon:
+                        m_hKVDictionary["mapname"] = "Canyon";
+                        m_hActivity.Assets.LargeImage = "gorillatag_desert"; // Yeah, that's a desert, sorry ;D
+                        break;
+            
+                    default:
+                        m_hKVDictionary["mapname"] = "Forest";
+                        m_hActivity.Assets.LargeImage = "gorillatag_forest";
+                        break;
+                }
+            }
+            m_hKVDictionary["players"] = Room.GetPlayers().ToString();
+            m_hKVDictionary["maxplayers"] = Room.GetMaxPlayers().ToString();
+            m_bIsInfected = !Room.IsTagging();
+            m_hKVDictionary["tagged"] = m_bIsInfected ? m_hCfgInfectedText.Value : m_hCfgNotInfectedText.Value;
+            m_hKVDictionary["taggedme"] = m_cfgTaggedOnJoinText.Value;
             if (m_hCfgUpdateTimeOnRoomJoin.Value == true)
             {
                 m_hActivity.Timestamps.Start = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
             }
             UpdateActivity();
         }
-        private void RoomDisconnected(object sender, EventArgs e)
+        private void OnRoomDisconnected(object sender, EventArgs e)
         {
-            m_sRoomCode = null;
             m_hKVDictionary["code"] = "";
             m_hActivity.Assets.LargeImage = "lobby";
             m_hKVDictionary["mapname"] = "Lobby";
+            m_bIsInfected = false;
+            m_hKVDictionary["tagged"] = m_hCfgNotInfectedText.Value;
+            m_nPlayersTaggedByMe = 0;
+            m_hKVDictionary["taggedbyme"] = "0";
+            if (m_hCfgShowSmallImage.Value) m_hActivity.Assets.SmallImage = m_hCfgNotInfectedImage.Value;
             UpdateActivity();
         }
         private void OnMyNicknameChange(object sender, PlayerNicknameArgs e)
@@ -243,18 +264,28 @@ namespace MonkeRPC
         private void OnPlayerCountChange(object sender, EventArgs e)
         {
             int nTagged = Players.CountInfectedPlayers();
-            m_hKVDictionary["infected"] = nTagged.ToString();
+            m_hKVDictionary["infected"] = m_bIsInfected.ToString();
             m_hKVDictionary["notinfected"] = (Room.GetPlayers() - nTagged).ToString();
             m_hKVDictionary["players"] = Room.GetPlayers().ToString();
             UpdateActivity();
         }
-        private void OnTaggedMe(object sender, PlayerTaggedPlayerArgs e)
+        private void OnTaggedSomeone(object sender, PlayerTaggedPlayerArgs e)
         {
-            if(e.victim == Photon.Pun.PhotonNetwork.LocalPlayer)
+            if (e.victim == Photon.Pun.PhotonNetwork.LocalPlayer)
             {
-                m_hKVDictionary["tagged"] = m_hCfgInfectedText.Value;
-                m_bIsTagged = true;
+                m_bIsInfected = true;
+                m_hKVDictionary["taggedme"] = e.tagger.NickName;
             }
+            else if (e.isTagging)
+            {
+                m_bIsInfected = false;
+            }
+            else if (e.tagger == Photon.Pun.PhotonNetwork.LocalPlayer)
+            {
+                ++m_nPlayersTaggedByMe;
+                m_hKVDictionary["taggedbyme"] = m_nPlayersTaggedByMe.ToString();
+            }
+            m_hKVDictionary["tagged"] = m_hCfgInfectedText.Value;
             int nTagged = Players.CountInfectedPlayers();
             m_hKVDictionary["infected"] = nTagged.ToString();
             m_hKVDictionary["notinfected"] = (Room.GetPlayers() -  nTagged).ToString();
@@ -262,16 +293,12 @@ namespace MonkeRPC
         }
         private void OnRoundStart(object sender, OnRoundStartArgs e)
         {
-            if (e.player == Photon.Pun.PhotonNetwork.LocalPlayer)
-            {
-                m_hKVDictionary["tagged"] = m_hCfgInfectedText.Value;
-                m_bIsTagged = true;
-            }
-            else
-            {
-                m_hKVDictionary["tagged"] = m_hCfgNotInfectedText.Value;
-                m_bIsTagged = false;
-            }
+            m_bIsInfected = (e.player == Photon.Pun.PhotonNetwork.LocalPlayer);
+            m_nPlayersTaggedByMe = 0;
+            m_hKVDictionary["taggedbyme"] = "0";
+            m_hKVDictionary["taggedme"] = "0";
+            m_hKVDictionary["tagged"] = m_bIsInfected ? m_hCfgInfectedText.Value : m_hCfgNotInfectedText.Value;
+            m_hKVDictionary["taggedme"] = m_cfgTaggedOnRoundStartText.Value;
             UpdateActivity();
         }
         public static string RegexReplace(string sText)
