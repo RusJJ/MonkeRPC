@@ -14,17 +14,18 @@ namespace MonkeRPCMapLoader
     {
         public void Start()
         {
-            MapLoader.OnMapChange = (bIsMapLoaded) =>
+            VmodMonkeMapLoader.Events.OnMapEnter += OnCustomMapEntered;
+        }
+        private static void OnCustomMapEntered(bool isJoined)
+        {
+            if (isJoined)
             {
-                if (bIsMapLoaded)
-                {
-                    MonkeRPC.MonkeRPC.SetCustomMapForRPC(MapLoader.GetMapName(), MapLoader.GetMapFileName());
-                }
-                else
-                {
-                    MonkeRPC.MonkeRPC.SetCustomMapForRPC(null, null);
-                }
-            };
+                MonkeRPC.MonkeRPC.SetCustomMapForRPC(VmodMonkeMapLoader.Events.MapName, VmodMonkeMapLoader.Events.MapFileName);
+            }
+            else
+            {
+                MonkeRPC.MonkeRPC.SetCustomMapForRPC(null, null);
+            }
         }
     }
 }
