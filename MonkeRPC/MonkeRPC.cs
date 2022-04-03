@@ -12,9 +12,9 @@ using Discord;
 namespace MonkeRPC
 {
     /* That's me! */
-    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.4.0")]
+    [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.4.1")]
     /* BananaHook: Our little API */
-    [BepInDependency("net.rusjj.gtlib.bananahook", "1.2.0")]
+    [BepInDependency("net.rusjj.gtlib.bananahook", "1.3.0")]
 
     public class MonkeRPC : BaseUnityPlugin
     {
@@ -188,6 +188,7 @@ namespace MonkeRPC
             Events.OnPlayerDisconnectedPost +=  OnPlayerCountChange;
             Events.OnPlayerTagPlayer +=         OnTaggedSomeone;
             Events.OnRoundStart +=              OnRoundStart;
+            Events.OnRoundEndPost +=            OnRoundEnd;
 
             var hCfgFile =                      new ConfigFile(Path.Combine(Paths.ConfigPath, "MonkeRPC.cfg"), true);
             m_hCfgIsRPCEnabled =                hCfgFile.Bind("CFG", "IsRPCEnabled", true, "Should Discord RPC be enabled?");
@@ -282,6 +283,11 @@ namespace MonkeRPC
                         m_hActivity.Assets.LargeImage = "gorillatag_shop";
                         break;
 
+                    case eJoinedMap.Mountain:
+                        m_hKVDictionary["mapname"] = "Mountain";
+                        m_hActivity.Assets.LargeImage = "gorillatag_mountain";
+                        break;
+
                     default:
                         m_hKVDictionary["mapname"] = "Forest";
                         m_hActivity.Assets.LargeImage = "gorillatag_forest";
@@ -371,6 +377,13 @@ namespace MonkeRPC
             m_hKVDictionary["taggedme"] = "0";
             m_hKVDictionary["tagged"] = m_bIsInfected ? (BananaHook.Utils.Room.m_eCurrentGamemode == eRoomGamemode.Hunt ? m_hCfgHuntedText.Value : m_hCfgInfectedText.Value) : m_hCfgNotInfectedText.Value;
             m_hKVDictionary["taggedme"] = m_cfgTaggedOnRoundStartText.Value;
+            UpdateActivity();
+        }
+        private void OnRoundEnd(object sender, EventArgs e)
+        {
+            m_nPlayersTaggedByMe = 0;
+            m_hKVDictionary["taggedbyme"] = "0";
+            m_hKVDictionary["taggedme"] = "0";
             UpdateActivity();
         }
         public static string RegexReplace(string sText)
