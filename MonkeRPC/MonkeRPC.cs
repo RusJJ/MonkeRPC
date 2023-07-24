@@ -5,9 +5,9 @@ using BepInEx;
 using BepInEx.Configuration;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using BananaHook;
-using BananaHook.Utils;
 using Discord;
+using BananaHook.Utils;
+using BananaHook;
 
 namespace MonkeRPC
 {
@@ -15,7 +15,6 @@ namespace MonkeRPC
     [BepInPlugin("net.rusjj.gorillatag.monkerpc", "Monke RPC", "1.4.1")]
     /* BananaHook: Our little API */
     [BepInDependency("net.rusjj.gtlib.bananahook", "1.3.0")]
-
     public class MonkeRPC : BaseUnityPlugin
     {
         /* My DISCORD variables! */
@@ -147,7 +146,8 @@ namespace MonkeRPC
             /* Give some time for game to initialize */
             Thread.Sleep(5000);
             
-            m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)CreateFlags.NoRequireDiscord);
+          //m_hDiscord = new Discord.Discord(837692600189190174, (UInt64)CreateFlags.NoRequireDiscord);
+            m_hDiscord = new Discord.Discord(1133006310640734300, (UInt64)CreateFlags.NoRequireDiscord);
             m_hActivityManager = m_hDiscord.GetActivityManager();
             if (m_hActivityManager == null) return;
             m_hActivityManager.RegisterSteam(1533390);
@@ -181,7 +181,7 @@ namespace MonkeRPC
         }
         void Awake()
         {
-            Events.OnRoomJoined +=              OnRoomJoined;
+            Events.OnRoomJoined  +=             OnRoomJoined;
             Events.OnRoomDisconnected +=        OnRoomDisconnected;
             Events.OnLocalNicknameChange +=     OnMyNicknameChange;
             Events.OnPlayerConnected +=         OnPlayerCountChange;
@@ -275,7 +275,7 @@ namespace MonkeRPC
             
                     case eJoinedMap.Canyon:
                         m_hKVDictionary["mapname"] = "Canyon";
-                        m_hActivity.Assets.LargeImage = "gorillatag_desert"; // Yeah, that's a desert, sorry ;D
+                        m_hActivity.Assets.LargeImage = "gorillatag_canyan";
                         break;
 
                     case eJoinedMap.GorillaShop:
@@ -287,10 +287,21 @@ namespace MonkeRPC
                         m_hKVDictionary["mapname"] = "Mountain";
                         m_hActivity.Assets.LargeImage = "gorillatag_mountain";
                         break;
-
+                    case eJoinedMap.SkyJungle:
+                        m_hKVDictionary["mapname"] = "Sky Jungle";
+                        m_hActivity.Assets.LargeImage = "gorillatag_sj";
+                        break;
+                    case eJoinedMap.Basement:
+                        m_hKVDictionary["mapname"] = "Basement";
+                        m_hActivity.Assets.LargeImage = "gorillatag_basement";
+                        break;
+                    case eJoinedMap.Beach:
+                        m_hKVDictionary["mapname"] = "Beach";
+                        m_hActivity.Assets.LargeImage = "gorillatag_beach";
+                        break;
                     default:
                         m_hKVDictionary["mapname"] = "Forest";
-                        m_hActivity.Assets.LargeImage = "gorillatag_forest";
+                        m_hActivity.Assets.LargeImage = "lobby";
                         break;
                 }
             }
