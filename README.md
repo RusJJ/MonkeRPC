@@ -1,3 +1,6 @@
+# The project is frozen
+Sadly my headset is broken. No more updates until i will get a new one.
+
 # What is this mod?
 A mod for PC version of Gorilla Tag that shows an info about your current gamestate in Discord.
 
